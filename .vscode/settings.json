@@ -1,0 +1,9 @@
+{
+  "go.lintTool": "staticcheck",
+  "go.lintFlags": [
+      "-checks=-ST1000"
+  ],
+  "go.formatTool": "gofmt",
+  "editor.tabSize": 2,
+  "editor.formatOnSave": true
+}
