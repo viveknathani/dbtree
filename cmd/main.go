@@ -119,6 +119,7 @@ func main() {
 	fmt.Printf("\ntotal execution time: %v\n", totalDuration)
 }
 
+// joinStrings concatenates a slice of strings with comma separation.
 func joinStrings(strs []string) string {
 	if len(strs) == 0 {
 		return ""

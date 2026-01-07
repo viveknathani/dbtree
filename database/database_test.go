@@ -10,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// TestInspectSchema tests the complete schema inspection functionality using embedded PostgreSQL.
 func TestInspectSchema(t *testing.T) {
 	// Start embedded postgres on non-standard port
 	postgres := embeddedpostgres.NewDatabase(embeddedpostgres.DefaultConfig().Port(9876))
@@ -117,6 +118,7 @@ func TestInspectSchema(t *testing.T) {
 	}
 }
 
+// createTestSchema creates test tables with various column types and constraints for testing.
 func createTestSchema(ctx context.Context, db *sql.DB) error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS test_users (
@@ -144,6 +146,7 @@ func createTestSchema(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
+// cleanupTestSchema removes test tables after testing is complete.
 func cleanupTestSchema(ctx context.Context, db *sql.DB) {
 	queries := []string{
 		`DROP TABLE IF EXISTS test_posts CASCADE`,
@@ -155,6 +158,7 @@ func cleanupTestSchema(ctx context.Context, db *sql.DB) {
 	}
 }
 
+// TestDatabaseDetection tests the database type detection functionality.
 func TestDatabaseDetection(t *testing.T) {
 	// Start embedded postgres on non-standard port
 	postgres := embeddedpostgres.NewDatabase(embeddedpostgres.DefaultConfig().Port(9877))
