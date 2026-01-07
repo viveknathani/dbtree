@@ -266,21 +266,18 @@ func (p *postgresInspector) getAllPrimaryKeys(ctx context.Context, db *sql.DB) (
 func (p *postgresInspector) getAllForeignKeys(ctx context.Context, db *sql.DB) (map[string][]Constraint, error) {
 	query := `
 		select 
-			tc.table_name,
-			tc.constraint_name,
-			kcu.column_name,
-			ccu.table_name AS foreign_table_name,
-			ccu.column_name AS foreign_column_name
-		from information_schema.table_constraints AS tc 
-		join information_schema.key_column_usage AS kcu
-			on tc.constraint_name = kcu.constraint_name
-			and tc.table_schema = kcu.table_schema
-		join information_schema.constraint_column_usage AS ccu
-			on ccu.constraint_name = tc.constraint_name
-			and ccu.table_schema = tc.table_schema
-		where tc.constraint_type = 'FOREIGN KEY' 
-			and tc.table_schema = 'public'
-		order by tc.table_name, tc.constraint_name, kcu.ordinal_position
+			src_rel.relname as table_name,
+			con.conname as constraint_name,
+			ref_rel.relname as foreign_table_name,
+			con.conkey,
+			con.confkey
+		from pg_constraint con
+		join pg_class src_rel on src_rel.oid = con.conrelid
+		join pg_class ref_rel on ref_rel.oid = con.confrelid  
+		join pg_namespace nsp on nsp.oid = src_rel.relnamespace
+		where con.contype = 'f'
+			and nsp.nspname = 'public'
+		order by src_rel.relname, con.conname
 	`
 
 	rows, err := db.QueryContext(ctx, query)
@@ -289,47 +286,156 @@ func (p *postgresInspector) getAllForeignKeys(ctx context.Context, db *sql.DB) (
 	}
 	defer rows.Close()
 
-	constraintMap := make(map[string]map[string]*Constraint)
+	type fkConstraint struct {
+		tableName        string
+		constraintName   string
+		foreignTableName string
+		conkey          []int16
+		confkey         []int16
+	}
+
+	var fkConstraints []fkConstraint
 	for rows.Next() {
 		var (
-			tableName         string
-			constraintName    string
-			columnName        string
-			foreignTableName  string
-			foreignColumnName string
+			tableName        string
+			constraintName   string
+			foreignTableName string
+			conkeyBytes      []byte
+			confkeyBytes     []byte
 		)
 
-		if err := rows.Scan(&tableName, &constraintName, &columnName, &foreignTableName, &foreignColumnName); err != nil {
+		if err := rows.Scan(&tableName, &constraintName, &foreignTableName, &conkeyBytes, &confkeyBytes); err != nil {
 			return nil, err
 		}
 
-		if constraintMap[tableName] == nil {
-			constraintMap[tableName] = make(map[string]*Constraint)
-		}
+		// Parse PostgreSQL arrays of attribute numbers
+		conkey := parseInt16Array(string(conkeyBytes))
+		confkey := parseInt16Array(string(confkeyBytes))
 
-		if _, exists := constraintMap[tableName][constraintName]; !exists {
-			constraintMap[tableName][constraintName] = &Constraint{
-				Kind:             ForeignKey,
-				Columns:          []string{},
-				ReferenceTable:   foreignTableName,
-				ReferenceColumns: []string{},
-			}
-		}
-
-		constraintMap[tableName][constraintName].Columns = append(constraintMap[tableName][constraintName].Columns, columnName)
-		if !contains(constraintMap[tableName][constraintName].ReferenceColumns, foreignColumnName) {
-			constraintMap[tableName][constraintName].ReferenceColumns = append(constraintMap[tableName][constraintName].ReferenceColumns, foreignColumnName)
-		}
+		fkConstraints = append(fkConstraints, fkConstraint{
+			tableName:        tableName,
+			constraintName:   constraintName,
+			foreignTableName: foreignTableName,
+			conkey:          conkey,
+			confkey:         confkey,
+		})
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Convert attribute numbers to column names
 	result := make(map[string][]Constraint)
-	for tableName, tableConstraints := range constraintMap {
-		for _, constraint := range tableConstraints {
-			result[tableName] = append(result[tableName], *constraint)
+	for _, fk := range fkConstraints {
+		// Get source table column names
+		sourceColumns, err := p.getColumnNamesByAttnum(ctx, db, fk.tableName, fk.conkey)
+		if err != nil {
+			return nil, err
+		}
+
+		// Get referenced table column names  
+		refColumns, err := p.getColumnNamesByAttnum(ctx, db, fk.foreignTableName, fk.confkey)
+		if err != nil {
+			return nil, err
+		}
+
+		constraint := Constraint{
+			Kind:             ForeignKey,
+			Columns:          sourceColumns,
+			ReferenceTable:   fk.foreignTableName,
+			ReferenceColumns: refColumns,
+		}
+
+		result[fk.tableName] = append(result[fk.tableName], constraint)
+	}
+
+	return result, nil
+}
+
+func (p *postgresInspector) getColumnNamesByAttnum(ctx context.Context, db *sql.DB, tableName string, attnums []int16) ([]string, error) {
+	if len(attnums) == 0 {
+		return nil, nil
+	}
+
+	// Get all column names and attnums for the table, then filter and order
+	query := `
+		select attname, attnum
+		from pg_attribute 
+		join pg_class on pg_class.oid = pg_attribute.attrelid
+		join pg_namespace on pg_namespace.oid = pg_class.relnamespace
+		where pg_namespace.nspname = 'public'
+			and pg_class.relname = $1
+			and attnum > 0
+			and not attisdropped
+		order by attnum
+	`
+
+	rows, err := db.QueryContext(ctx, query, tableName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Create map of attnum -> column name
+	attnumToName := make(map[int16]string)
+	for rows.Next() {
+		var colName string
+		var attnum int16
+		if err := rows.Scan(&colName, &attnum); err != nil {
+			return nil, err
+		}
+		attnumToName[attnum] = colName
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Build result in the same order as attnums slice
+	var columns []string
+	for _, attnum := range attnums {
+		if colName, exists := attnumToName[attnum]; exists {
+			columns = append(columns, colName)
 		}
 	}
 
-	return result, rows.Err()
+	return columns, nil
+}
+
+func parseInt16Array(pgArray string) []int16 {
+	// Parse PostgreSQL array format like "{1,2,3}"
+	if len(pgArray) < 2 || pgArray[0] != '{' || pgArray[len(pgArray)-1] != '}' {
+		return nil
+	}
+
+	content := pgArray[1 : len(pgArray)-1]
+	if content == "" {
+		return nil
+	}
+
+	parts := strings.Split(content, ",")
+	result := make([]int16, 0, len(parts))
+	
+	for _, part := range parts {
+		if val := parseInt16(strings.TrimSpace(part)); val != 0 {
+			result = append(result, val)
+		}
+	}
+
+	return result
+}
+
+func parseInt16(s string) int16 {
+	var result int16
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			result = result*10 + int16(r-'0')
+		} else {
+			return 0
+		}
+	}
+	return result
 }
 
 func (p *postgresInspector) getAllUniqueConstraints(ctx context.Context, db *sql.DB) (map[string][]Constraint, error) {
