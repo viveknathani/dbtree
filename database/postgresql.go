@@ -37,7 +37,7 @@ func (p *postgresInspector) InspectSchema(ctx context.Context, db *sql.DB) (*Dat
 
 	for i := range tables {
 		tableName := tables[i].Name
-		tables[i].Column = allColumns[tableName]
+		tables[i].Columns = allColumns[tableName]
 		tables[i].Constraints = allConstraints[tableName]
 	}
 

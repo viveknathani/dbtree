@@ -66,8 +66,8 @@ func TestInspectSchema(t *testing.T) {
 
 	// Verify columns
 	expectedColumns := []string{"id", "email", "name", "created_at"}
-	if len(usersTable.Column) != len(expectedColumns) {
-		t.Errorf("Expected %d columns, got %d", len(expectedColumns), len(usersTable.Column))
+	if len(usersTable.Columns) != len(expectedColumns) {
+		t.Errorf("Expected %d columns, got %d", len(expectedColumns), len(usersTable.Columns))
 	}
 
 	// Verify constraints

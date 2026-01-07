@@ -10,8 +10,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/viveknathani/dbtree/database"
 	_ "github.com/lib/pq"
+	"github.com/viveknathani/dbtree/database"
 )
 
 func main() {
@@ -58,14 +58,14 @@ func main() {
 	// Print results
 	fmt.Print("generating output...")
 	outputStart := time.Now()
-	
+
 	fmt.Printf("\n\ndatabase: %s\n", schema.Name)
 	fmt.Printf("found %d tables\n\n", len(schema.Tables))
 
 	for _, table := range schema.Tables {
 		fmt.Printf("table: %s\n", table.Name)
-		fmt.Printf("  columns (%d):\n", len(table.Column))
-		for _, col := range table.Column {
+		fmt.Printf("  columns (%d):\n", len(table.Columns))
+		for _, col := range table.Columns {
 			nullable := "NOT NULL"
 			if col.IsNullable {
 				nullable = "NULL"
@@ -84,9 +84,9 @@ func main() {
 				case database.PrimaryKey:
 					fmt.Printf("    - PRIMARY KEY (%s)\n", joinStrings(constraint.Columns))
 				case database.ForeignKey:
-					fmt.Printf("    - FOREIGN KEY (%s) REFERENCES %s(%s)\n", 
-						joinStrings(constraint.Columns), 
-						constraint.ReferenceTable, 
+					fmt.Printf("    - FOREIGN KEY (%s) REFERENCES %s(%s)\n",
+						joinStrings(constraint.Columns),
+						constraint.ReferenceTable,
 						joinStrings(constraint.ReferenceColumns))
 				case database.Unique:
 					fmt.Printf("    - UNIQUE (%s)\n", joinStrings(constraint.Columns))

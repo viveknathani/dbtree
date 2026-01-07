@@ -42,7 +42,7 @@ type Column struct {
 // Table represents a database table with its columns and constraints.
 type Table struct {
 	Name        string
-	Column      []Column
+	Columns     []Column
 	Constraints []Constraint
 }
 
