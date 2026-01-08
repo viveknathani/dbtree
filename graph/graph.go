@@ -18,13 +18,22 @@ type SchemaGraph struct {
 }
 
 func Build(db *database.Database) *SchemaGraph {
+	if db == nil {
+		return nil
+	}
+
 	nodes := make(map[TableName]*database.Table)
 	edges := []ForeignKeyEdge{}
 
+	// First pass: populate nodes map
 	for i := range db.Tables {
 		table := &db.Tables[i]
 		nodes[TableName(table.Name)] = table
+	}
 
+	// Second pass: create edges
+	for i := range db.Tables {
+		table := &db.Tables[i]
 		for _, constraint := range table.Constraints {
 			if constraint.Kind == database.ForeignKey {
 				referencedTable := TableName(constraint.ReferenceTable)
