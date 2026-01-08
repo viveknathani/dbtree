@@ -27,13 +27,16 @@ func Build(db *database.Database) *SchemaGraph {
 
 		for _, constraint := range table.Constraints {
 			if constraint.Kind == database.ForeignKey {
-				edge := ForeignKeyEdge{
-					FromTable:        TableName(table.Name),
-					ToTable:          TableName(constraint.ReferenceTable),
-					Columns:          constraint.Columns,
-					ReferenceColumns: constraint.ReferenceColumns,
+				referencedTable := TableName(constraint.ReferenceTable)
+				if _, exists := nodes[referencedTable]; exists {
+					edge := ForeignKeyEdge{
+						FromTable:        TableName(table.Name),
+						ToTable:          referencedTable,
+						Columns:          constraint.Columns,
+						ReferenceColumns: constraint.ReferenceColumns,
+					}
+					edges = append(edges, edge)
 				}
-				edges = append(edges, edge)
 			}
 		}
 	}
