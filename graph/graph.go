@@ -19,7 +19,7 @@ type SchemaGraph struct {
 
 func Build(db *database.Database) *SchemaGraph {
 	nodes := make(map[TableName]*database.Table)
-	var edges []ForeignKeyEdge
+	edges := []ForeignKeyEdge{}
 
 	for i := range db.Tables {
 		table := &db.Tables[i]
