@@ -70,10 +70,9 @@ func main() {
 
 	if config.Shape != string(render.ShapeTree) && config.Shape != string(render.ShapeFlat) {
 		log.Fatal("error: invalid shape specified (use tree or flat)")
-		os.Exit(1)
 	}
 
-	if !strings.HasPrefix(config.DatabaseUrl, "postgres") {
+	if !strings.HasPrefix(config.DatabaseUrl, "postgres://") && !strings.HasPrefix(config.DatabaseUrl, "postgresql://") {
 		log.Fatal("error: only PostgreSQL is supported currently")
 	}
 
