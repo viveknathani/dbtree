@@ -39,7 +39,7 @@ func parseFlags() Configuration {
 
 	dbUrl := flag.String("conn", "", "The database connection URL")
 	format := flag.String("format", string(render.FormatText), "The output format (text or json)")
-	shape := flag.String("shape", string(render.ShapeTree), "The shape of the output (tree, flat, or graph)")
+	shape := flag.String("shape", string(render.ShapeTree), "The shape of the output (tree, flat, or chart)")
 	help := flag.Bool("help", false, "Display help information")
 
 	flag.Parse()
