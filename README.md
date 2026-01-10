@@ -6,7 +6,7 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/viveknathani/dbtree)](go.mod)
 [![Tests](https://github.com/viveknathani/dbtree/workflows/test/badge.svg)](https://github.com/viveknathani/dbtree/actions)
 
-A command-line tool to visualize database schemas right inside your terminal. It's built for both humans and AI to get complete context of your database architecture.
+A tool to visualize database schemas right inside your terminal. It's built for both humans and AI to get complete context of your database architecture.
 
 <img src="demo.gif" width="700" alt="Demo">
 
