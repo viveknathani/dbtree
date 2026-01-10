@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -64,54 +65,46 @@ func main() {
 	}
 
 	if config.Format != string(render.FormatText) && config.Format != string(render.FormatJSON) {
-		fmt.Println("error: invalid format specified (use text or json)")
-		os.Exit(1)
+		log.Fatal("error: invalid format specified (use text or json)")
 	}
 
 	if config.Shape != string(render.ShapeTree) && config.Shape != string(render.ShapeFlat) {
-		fmt.Println("error: invalid shape specified (use tree or flat)")
+		log.Fatal("error: invalid shape specified (use tree or flat)")
 		os.Exit(1)
 	}
 
 	if !strings.HasPrefix(config.DatabaseUrl, "postgres") {
-		fmt.Println("error: only PostgreSQL is supported currently")
-		os.Exit(1)
+		log.Fatal("error: only PostgreSQL is supported currently")
 	}
 
 	db, err := sql.Open("postgres", config.DatabaseUrl)
 	if err != nil {
-		fmt.Println("error: failed to connect to database")
-		os.Exit(1)
+		log.Fatalf("error: failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
 	schema, err := database.InspectSchema(context.Background(), db)
 
 	if err != nil {
-		fmt.Printf("error: failed to inspect database schema: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("error: failed to inspect database schema: %v", err)
 	}
 
 	if schema == nil {
-		fmt.Println("error: no schema information found")
-		os.Exit(1)
+		log.Fatal("error: no schema information found")
 	}
 
 	graph, err := graph.Build(schema)
 	if err != nil {
-		fmt.Printf("error: failed to build schema graph: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("error: failed to build schema graph: %v", err)
 	}
 
 	if graph == nil {
-		fmt.Println("error: schema graph is nil")
-		os.Exit(1)
+		log.Fatal("error: schema graph is nil")
 	}
 
 	renderedOutput, err := render.Render(graph, render.Format(config.Format), render.Shape(config.Shape))
 	if err != nil {
-		fmt.Printf("error: failed to render output: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("error: failed to render output: %v", err)
 	}
 
 	fmt.Println(renderedOutput)
