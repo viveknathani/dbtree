@@ -22,11 +22,30 @@ type Configuration struct {
 
 // parseFlags parses command-line flags and returns a Configuration struct.
 func parseFlags() Configuration {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		flag.VisitAll(func(f *flag.Flag) {
+			fmt.Fprintf(os.Stderr, "  --%s\n", f.Name)
+			fmt.Fprintf(os.Stderr, "        %s", f.Usage)
+			if f.DefValue != "" && f.DefValue != "false" {
+				fmt.Fprintf(os.Stderr, " (default: %s)", f.DefValue)
+			}
+			fmt.Fprintf(os.Stderr, "\n")
+		})
+	}
+
 	dbUrl := flag.String("conn", "", "The database connection URL")
-	format := flag.String("format", string(render.FormatText), "The output format (tree or json)")
-	shape := flag.String("shape", string(render.ShapeTree), "The shape of the output (default or compact)")
+	format := flag.String("format", string(render.FormatText), "The output format (text or json)")
+	shape := flag.String("shape", string(render.ShapeTree), "The shape of the output (tree or flat)")
+	help := flag.Bool("help", false, "Display help information")
 
 	flag.Parse()
+
+	if *help {
+		flag.Usage()
+		os.Exit(0)
+	}
 
 	return Configuration{
 		DatabaseUrl: *dbUrl,
@@ -39,7 +58,7 @@ func main() {
 	config := parseFlags()
 
 	if config.DatabaseUrl == "" {
-		fmt.Println("error: -conn flag is required")
+		fmt.Println("error: --conn flag is required")
 		flag.Usage()
 		os.Exit(1)
 	}
