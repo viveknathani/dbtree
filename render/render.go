@@ -558,7 +558,7 @@ func renderGraphAsText(g *graph.SchemaGraph) (string, error) {
 	artist := d2ascii.NewASCIIartist()
 	asciiBytes, err := artist.Render(ctx, diagram, &d2ascii.RenderOpts{
 		Scale:   go2.Pointer(1.0),
-		Charset: charset.Unicode,
+		Charset: charset.ASCII,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to render ASCII: %w", err)
