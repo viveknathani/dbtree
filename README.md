@@ -1,8 +1,10 @@
 # dbtree
 
-A command-line tool to visualize database schemas right inside your terminal. It's built for both humans and AI to get complete context of your database architecture. You can check-in the generated output into your code as part of your documentation.
+A command-line tool to visualize database schemas right inside your terminal. It's built for both humans and AI to get complete context of your database architecture.
 
-It currently works only with PostgreSQL.
+<img src="demo.gif" width="700" alt="Demo">
+
+<i>Works only with PostgreSQL for now.</i>
 
 ## features
 

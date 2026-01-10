@@ -1,0 +1,15 @@
+# database setup for demo: connect via postgresql://postgres:postgres@localhost:5434/testdb
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: demo-db-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: testdb
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
