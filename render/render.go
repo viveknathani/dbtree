@@ -18,8 +18,8 @@ import (
 	"github.com/viveknathani/d2/lib/log"
 	"github.com/viveknathani/d2/lib/textmeasure"
 	"github.com/viveknathani/dbtree/database"
-	"github.com/viveknathani/dbtree/go2"
 	"github.com/viveknathani/dbtree/graph"
+	"oss.terrastruct.com/util-go/go2"
 )
 
 // Format represents the output serialization format

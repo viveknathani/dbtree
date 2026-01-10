@@ -5,6 +5,8 @@ go 1.25
 require (
 	github.com/fergusstrange/embedded-postgres v1.33.0
 	github.com/lib/pq v1.10.9
+	github.com/viveknathani/d2 v0.0.0-20260110095913-68912a37f273
+	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 )
 
 require (
@@ -20,17 +22,12 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mazznoer/csscolorparser v0.1.5 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/viveknathani/d2 v0.0.0-20260110095913-68912a37f273 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
 	golang.org/x/image v0.20.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	oss.terrastruct.com/util-go v0.0.0-20250213174338-243d8661088a // indirect
+	oss.terrastruct.com/util-go v0.0.0-20250213174338-243d8661088a
 )
 
-require (
-	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	oss.terrastruct.com/d2 v0.7.1
-)
+require github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
