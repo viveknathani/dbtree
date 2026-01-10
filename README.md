@@ -1,5 +1,11 @@
 # dbtree
 
+[![GitHub release](https://img.shields.io/github/v/release/viveknathani/dbtree?color=blue)](https://github.com/viveknathani/dbtree/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/viveknathani/dbtree)](https://goreportcard.com/report/github.com/viveknathani/dbtree)
+[![License](https://img.shields.io/badge/license-Unlicense-blue.svg)](UNLICENSE)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/viveknathani/dbtree)](go.mod)
+[![Tests](https://github.com/viveknathani/dbtree/workflows/test/badge.svg)](https://github.com/viveknathani/dbtree/actions)
+
 A command-line tool to visualize database schemas right inside your terminal. It's built for both humans and AI to get complete context of your database architecture.
 
 <img src="demo.gif" width="700" alt="Demo">
@@ -280,6 +286,6 @@ make test
 
 ## license
 
-[None](./UNLICENSE). Do whatever you want. Have fun!
+[None](./UNLICENSE). Do whatever you want. Have fun and happy hacking!
 
-Happy hacking!
+<i>Built by [@viveknathani](https://vivekn.dev)</i>
