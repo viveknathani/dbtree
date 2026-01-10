@@ -1,6 +1,10 @@
 package graph
 
-import "github.com/viveknathani/dbtree/database"
+import (
+	"fmt"
+
+	"github.com/viveknathani/dbtree/database"
+)
 
 type TableName string
 
@@ -17,9 +21,9 @@ type SchemaGraph struct {
 	Edges        []ForeignKeyEdge
 }
 
-func Build(db *database.Database) *SchemaGraph {
+func Build(db *database.Database) (*SchemaGraph, error) {
 	if db == nil {
-		return nil
+		return nil, fmt.Errorf("database is nil")
 	}
 
 	nodes := make(map[TableName]*database.Table)
@@ -54,5 +58,5 @@ func Build(db *database.Database) *SchemaGraph {
 		DatabaseName: db.Name,
 		Nodes:        nodes,
 		Edges:        edges,
-	}
+	}, nil
 }

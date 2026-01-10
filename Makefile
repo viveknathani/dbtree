@@ -1,5 +1,5 @@
 build:
-	go build -o ./bin/dbtree ./cmd
+	go build -o ./bin/dbtree ./cmd/dbtree/
 
 test:
 	go test -v ./...
