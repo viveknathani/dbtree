@@ -39,7 +39,7 @@ func parseFlags() Configuration {
 
 	dbUrl := flag.String("conn", "", "The database connection URL")
 	format := flag.String("format", string(render.FormatText), "The output format (text or json)")
-	shape := flag.String("shape", string(render.ShapeTree), "The shape of the output (tree or flat)")
+	shape := flag.String("shape", string(render.ShapeTree), "The shape of the output (tree, flat, or graph)")
 	help := flag.Bool("help", false, "Display help information")
 
 	flag.Parse()
@@ -68,8 +68,12 @@ func main() {
 		log.Fatal("error: invalid format specified (use text or json)")
 	}
 
-	if config.Shape != string(render.ShapeTree) && config.Shape != string(render.ShapeFlat) {
-		log.Fatal("error: invalid shape specified (use tree or flat)")
+	if config.Shape != string(render.ShapeTree) && config.Shape != string(render.ShapeFlat) && config.Shape != string(render.ShapeGraph) {
+		log.Fatal("error: invalid shape specified (use tree, flat, or graph)")
+	}
+
+	if config.Shape == string(render.ShapeGraph) && config.Format == string(render.FormatJSON) {
+		log.Fatal("error: graph shape is only supported with text format")
 	}
 
 	if !strings.HasPrefix(config.DatabaseUrl, "postgres://") && !strings.HasPrefix(config.DatabaseUrl, "postgresql://") {

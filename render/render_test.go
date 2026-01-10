@@ -116,6 +116,28 @@ func TestRender(t *testing.T) {
 				`"to": "users"`,
 			},
 		},
+		{
+			name:    "text graph",
+			format:  FormatText,
+			shape:   ShapeGraph,
+			wantErr: false,
+			contains: []string{
+				"users",
+				"posts",
+				"settings",
+				"PK id",
+				"FK user_id",
+				"┌",
+				"└",
+				"│",
+			},
+		},
+		{
+			name:    "json graph not supported",
+			format:  FormatJSON,
+			shape:   ShapeGraph,
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
