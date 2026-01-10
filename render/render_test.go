@@ -53,7 +53,10 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	g := graph.Build(db)
+	g, err := graph.Build(db)
+	if err != nil {
+		t.Fatalf("failed to build graph: %v", err)
+	}
 
 	tests := []struct {
 		name     string

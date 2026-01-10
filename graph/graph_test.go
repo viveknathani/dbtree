@@ -130,12 +130,15 @@ func TestBuild(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := Build(tt.db)
+			result, err := Build(tt.db)
+			if err != nil {
+				t.Errorf("Build failed: %v", err)
+				return
+			}
 
 			if result.DatabaseName != tt.expected.DatabaseName {
 				t.Errorf("DatabaseName = %v, want %v", result.DatabaseName, tt.expected.DatabaseName)
 			}
-
 			if len(result.Nodes) != len(tt.expected.Nodes) {
 				t.Errorf("Nodes length = %v, want %v", len(result.Nodes), len(tt.expected.Nodes))
 			}

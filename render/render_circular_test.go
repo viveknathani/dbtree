@@ -50,7 +50,10 @@ func TestRenderCircularReferences(t *testing.T) {
 		},
 	}
 
-	g := graph.Build(db)
+	g, err := graph.Build(db)
+	if err != nil {
+		t.Fatalf("failed to build graph: %v", err)
+	}
 
 	t.Run("text tree with cycles", func(t *testing.T) {
 		output, err := Render(g, FormatText, ShapeTree)
@@ -143,7 +146,10 @@ func TestRenderCircularReferences(t *testing.T) {
 		},
 	}
 
-	gComplex := graph.Build(dbComplex)
+	gComplex, err := graph.Build(dbComplex)
+	if err != nil {
+		t.Fatalf("failed to build complex graph: %v", err)
+	}
 
 	t.Run("complex circular reference", func(t *testing.T) {
 		output, err := Render(gComplex, FormatText, ShapeTree)
@@ -219,7 +225,10 @@ func TestRenderSelfReferencingTable(t *testing.T) {
 		},
 	}
 
-	g := graph.Build(db)
+	g, err := graph.Build(db)
+	if err != nil {
+		t.Fatalf("failed to build graph: %v", err)
+	}
 
 	t.Run("self-referencing table", func(t *testing.T) {
 		output, err := Render(g, FormatText, ShapeTree)
