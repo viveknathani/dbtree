@@ -23,6 +23,7 @@ type Configuration struct {
 // parseFlags parses command-line flags and returns a Configuration struct.
 func parseFlags() Configuration {
 	flag.Usage = func() {
+		fmt.Println("dbtree - A tool to visualize database schemas")
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.VisitAll(func(f *flag.Flag) {
@@ -58,7 +59,6 @@ func main() {
 	config := parseFlags()
 
 	if config.DatabaseUrl == "" {
-		fmt.Println("error: --conn flag is required")
 		flag.Usage()
 		os.Exit(1)
 	}
