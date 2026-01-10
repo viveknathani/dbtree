@@ -75,7 +75,7 @@ func TestRender(t *testing.T) {
 				"users",
 				"posts",
 				"settings",
-				"user_id (int) → users.id",
+				"user_id (\"int\") → users.id",
 			},
 		},
 		{
