@@ -24,7 +24,7 @@ type Configuration struct {
 // parseFlags parses command-line flags and returns a Configuration struct.
 func parseFlags() Configuration {
 	flag.Usage = func() {
-		fmt.Println("dbtree - A tool to visualize database schemas")
+		fmt.Fprintf(os.Stderr, "dbtree - A tool to visualize database schemas\n")
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.VisitAll(func(f *flag.Flag) {
@@ -39,7 +39,7 @@ func parseFlags() Configuration {
 
 	dbUrl := flag.String("conn", "", "The database connection URL")
 	format := flag.String("format", string(render.FormatText), "The output format (text or json)")
-	shape := flag.String("shape", string(render.ShapeTree), "The shape of the output (tree or flat)")
+	shape := flag.String("shape", string(render.ShapeTree), "The shape of the output (tree, flat, or chart)")
 	help := flag.Bool("help", false, "Display help information")
 
 	flag.Parse()
@@ -68,8 +68,12 @@ func main() {
 		log.Fatal("error: invalid format specified (use text or json)")
 	}
 
-	if config.Shape != string(render.ShapeTree) && config.Shape != string(render.ShapeFlat) {
-		log.Fatal("error: invalid shape specified (use tree or flat)")
+	if config.Shape != string(render.ShapeTree) && config.Shape != string(render.ShapeFlat) && config.Shape != string(render.ShapeChart) {
+		log.Fatal("error: invalid shape specified (use tree, flat, or chart)")
+	}
+
+	if config.Shape == string(render.ShapeChart) && config.Format == string(render.FormatJSON) {
+		log.Fatal("error: chart shape is only supported with text format")
 	}
 
 	if !strings.HasPrefix(config.DatabaseUrl, "postgres://") && !strings.HasPrefix(config.DatabaseUrl, "postgresql://") {
@@ -78,9 +82,14 @@ func main() {
 
 	db, err := sql.Open("postgres", config.DatabaseUrl)
 	if err != nil {
-		log.Fatalf("error: failed to connect to database: %v", err)
+		log.Fatalf("error: failed to open database: %v", err)
 	}
 	defer db.Close()
+
+	// Verify the connection is actually established
+	if err := db.PingContext(context.Background()); err != nil {
+		log.Fatalf("error: failed to connect to database: %v", err)
+	}
 
 	schema, err := database.InspectSchema(context.Background(), db)
 

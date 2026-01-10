@@ -1,13 +1,26 @@
 package render
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log/slog"
 	"sort"
+	"strconv"
 	"strings"
 
+	"github.com/viveknathani/d2/d2graph"
+	"github.com/viveknathani/d2/d2layouts/d2elklayout"
+	"github.com/viveknathani/d2/d2lib"
+	"github.com/viveknathani/d2/d2renderers/d2ascii"
+	"github.com/viveknathani/d2/d2renderers/d2ascii/charset"
+	"github.com/viveknathani/d2/d2renderers/d2svg"
+	"github.com/viveknathani/d2/lib/log"
+	"github.com/viveknathani/d2/lib/textmeasure"
 	"github.com/viveknathani/dbtree/database"
 	"github.com/viveknathani/dbtree/graph"
+	"oss.terrastruct.com/util-go/go2"
 )
 
 // Format represents the output serialization format
@@ -21,6 +34,7 @@ const (
 	FormatJSON Format = "json"
 	ShapeTree  Shape  = "tree"
 	ShapeFlat  Shape  = "flat"
+	ShapeChart Shape  = "chart"
 )
 
 // Render generates a string representation of the schema graph
@@ -41,6 +55,10 @@ func Render(g *graph.SchemaGraph, format Format, shape Shape) (string, error) {
 		return renderFlatAsText(g)
 	case format == FormatJSON && shape == ShapeFlat:
 		return renderFlatAsJSON(g)
+	case format == FormatText && shape == ShapeChart:
+		return renderGraphAsText(g)
+	case format == FormatJSON && shape == ShapeChart:
+		return "", fmt.Errorf("chart shape is only supported with text format")
 	default:
 		return "", fmt.Errorf("unsupported format/shape combination: %s/%s", format, shape)
 	}
@@ -48,10 +66,10 @@ func Render(g *graph.SchemaGraph, format Format, shape Shape) (string, error) {
 
 // TreeNode represents a table in the tree structure
 type TreeNode struct {
-	TableName graph.TableName
-	Table     *database.Table
-	Children  []*TreeNode
-	IsCircular bool
+	TableName    graph.TableName
+	Table        *database.Table
+	Children     []*TreeNode
+	IsCircular   bool
 	AlreadyShown bool
 }
 
@@ -59,17 +77,17 @@ type TreeNode struct {
 func buildTree(g *graph.SchemaGraph) *TreeNode {
 	// Build adjacency list
 	childrenMap := buildAdjacencyList(g)
-	
+
 	// Find root tables
 	roots := findRootTables(g)
-	
+
 	// Track visited nodes
 	visited := make(map[graph.TableName]bool)
 	processing := make(map[graph.TableName]bool)
-	
+
 	// Build tree starting from roots (or arbitrary node if all cyclic)
 	var rootNode *TreeNode
-	
+
 	if len(roots) == 0 && len(g.Nodes) > 0 {
 		// All tables in cycles - pick first alphabetically
 		var firstTable graph.TableName
@@ -85,14 +103,14 @@ func buildTree(g *graph.SchemaGraph) *TreeNode {
 			TableName: graph.TableName(g.DatabaseName),
 			Children:  []*TreeNode{},
 		}
-		
+
 		for _, root := range roots {
 			if child := buildTreeNode(g, root, childrenMap, visited, processing); child != nil {
 				rootNode.Children = append(rootNode.Children, child)
 			}
 		}
 	}
-	
+
 	// Add orphan tables
 	orphans := findOrphanTables(g, visited)
 	if len(orphans) > 0 {
@@ -100,7 +118,7 @@ func buildTree(g *graph.SchemaGraph) *TreeNode {
 			TableName: "orphan_tables",
 			Children:  []*TreeNode{},
 		}
-		
+
 		for _, orphan := range orphans {
 			orphanRoot.Children = append(orphanRoot.Children, &TreeNode{
 				TableName: orphan,
@@ -108,17 +126,17 @@ func buildTree(g *graph.SchemaGraph) *TreeNode {
 				Children:  []*TreeNode{},
 			})
 		}
-		
+
 		rootNode.Children = append(rootNode.Children, orphanRoot)
 	}
-	
+
 	return rootNode
 }
 
 func buildTreeNode(g *graph.SchemaGraph, tableName graph.TableName,
 	childrenMap map[graph.TableName][]graph.TableName,
 	visited, processing map[graph.TableName]bool) *TreeNode {
-	
+
 	// Handle cycles
 	if processing[tableName] {
 		return &TreeNode{
@@ -128,33 +146,33 @@ func buildTreeNode(g *graph.SchemaGraph, tableName graph.TableName,
 			Children:   []*TreeNode{},
 		}
 	}
-	
+
 	// Handle already visited
 	if visited[tableName] {
 		return &TreeNode{
-			TableName:     tableName,
-			Table:         g.Nodes[tableName],
-			AlreadyShown:  true,
-			Children:      []*TreeNode{},
+			TableName:    tableName,
+			Table:        g.Nodes[tableName],
+			AlreadyShown: true,
+			Children:     []*TreeNode{},
 		}
 	}
-	
+
 	visited[tableName] = true
 	processing[tableName] = true
-	
+
 	node := &TreeNode{
 		TableName: tableName,
 		Table:     g.Nodes[tableName],
 		Children:  []*TreeNode{},
 	}
-	
+
 	// Add children
 	for _, child := range childrenMap[tableName] {
 		if childNode := buildTreeNode(g, child, childrenMap, visited, processing); childNode != nil {
 			node.Children = append(node.Children, childNode)
 		}
 	}
-	
+
 	processing[tableName] = false
 	return node
 }
@@ -163,12 +181,12 @@ func renderTreeAsText(root *TreeNode, databaseName string) string {
 	var sb strings.Builder
 	sb.WriteString(databaseName)
 	sb.WriteString("\n")
-	
+
 	for i, child := range root.Children {
 		isLast := i == len(root.Children)-1
 		renderTextNode(&sb, child, "", isLast)
 	}
-	
+
 	return sb.String()
 }
 
@@ -185,7 +203,7 @@ func renderTextNode(sb *strings.Builder, node *TreeNode, prefix string, isLast b
 		}
 		return
 	}
-	
+
 	// Render table name
 	sb.WriteString(prefix)
 	connector := "├── "
@@ -194,14 +212,14 @@ func renderTextNode(sb *strings.Builder, node *TreeNode, prefix string, isLast b
 	}
 	sb.WriteString(connector)
 	sb.WriteString(string(node.TableName))
-	
+
 	if node.IsCircular {
 		sb.WriteString(" (circular reference)")
 	} else if node.AlreadyShown {
 		sb.WriteString(" (see above)")
 	}
 	sb.WriteString("\n")
-	
+
 	// Render table details
 	if node.Table != nil && !node.IsCircular && !node.AlreadyShown {
 		newPrefix := prefix
@@ -212,7 +230,7 @@ func renderTextNode(sb *strings.Builder, node *TreeNode, prefix string, isLast b
 		}
 		renderTableColumns(sb, node.Table, newPrefix)
 	}
-	
+
 	// Render children
 	if !node.IsCircular && !node.AlreadyShown {
 		childPrefix := prefix
@@ -221,7 +239,7 @@ func renderTextNode(sb *strings.Builder, node *TreeNode, prefix string, isLast b
 		} else {
 			childPrefix += "│   "
 		}
-		
+
 		for i, child := range node.Children {
 			childIsLast := i == len(node.Children)-1
 			renderTextNode(sb, child, childPrefix, childIsLast)
@@ -233,7 +251,7 @@ func renderTableColumns(sb *strings.Builder, table *database.Table, prefix strin
 	if table == nil {
 		return
 	}
-	
+
 	for i, col := range table.Columns {
 		isLast := i == len(table.Columns)-1
 		sb.WriteString(prefix)
@@ -242,12 +260,12 @@ func renderTableColumns(sb *strings.Builder, table *database.Table, prefix strin
 			connector = "└── "
 		}
 		sb.WriteString(connector)
-		
+
 		sb.WriteString(col.Name)
 		sb.WriteString(" (")
-		sb.WriteString(string(col.Type))
+		sb.WriteString(strconv.Quote(string(col.Type)))
 		sb.WriteString(")")
-		
+
 		// Add constraints
 		appendConstraints(sb, table, col.Name)
 		sb.WriteString("\n")
@@ -264,7 +282,7 @@ func appendConstraints(sb *strings.Builder, table *database.Table, columnName st
 				sb.WriteString(" UNIQUE")
 			}
 		}
-		
+
 		// Foreign keys
 		if constraint.Kind == database.ForeignKey {
 			for j, fkCol := range constraint.Columns {
@@ -286,26 +304,26 @@ func renderTreeAsJSON(root *TreeNode, databaseName string) (string, error) {
 		Constraint string `json:"constraint,omitempty"`
 		Reference  string `json:"reference,omitempty"`
 	}
-	
+
 	type Table struct {
 		Name     string   `json:"name"`
 		Columns  []Column `json:"columns"`
 		Children []Table  `json:"children,omitempty"`
 	}
-	
+
 	type Result struct {
-		Database string   `json:"database"`
-		Tables   []Table  `json:"tables"`
-		Orphans  []Table  `json:"orphans,omitempty"`
+		Database string  `json:"database"`
+		Tables   []Table `json:"tables"`
+		Orphans  []Table `json:"orphans,omitempty"`
 	}
-	
+
 	var convertNode func(*TreeNode) *Table
 	convertNode = func(node *TreeNode) *Table {
 		table := &Table{
 			Name:    string(node.TableName),
 			Columns: []Column{},
 		}
-		
+
 		// Only add details and children if not circular/already shown
 		if node.Table != nil && !node.IsCircular && !node.AlreadyShown {
 			for _, col := range node.Table.Columns {
@@ -313,7 +331,7 @@ func renderTreeAsJSON(root *TreeNode, databaseName string) (string, error) {
 					Name: col.Name,
 					Type: string(col.Type),
 				}
-				
+
 				// Find constraints
 				for _, constraint := range node.Table.Constraints {
 					if len(constraint.Columns) == 1 && constraint.Columns[0] == col.Name {
@@ -324,7 +342,7 @@ func renderTreeAsJSON(root *TreeNode, databaseName string) (string, error) {
 							column.Constraint = "UNIQUE"
 						}
 					}
-					
+
 					// Foreign keys
 					if constraint.Kind == database.ForeignKey {
 						for j, fkCol := range constraint.Columns {
@@ -336,11 +354,11 @@ func renderTreeAsJSON(root *TreeNode, databaseName string) (string, error) {
 						}
 					}
 				}
-				
+
 				table.Columns = append(table.Columns, column)
 			}
 		}
-		
+
 		// Only add children if not circular/already shown
 		if !node.IsCircular && !node.AlreadyShown {
 			for _, child := range node.Children {
@@ -349,15 +367,15 @@ func renderTreeAsJSON(root *TreeNode, databaseName string) (string, error) {
 				}
 			}
 		}
-		
+
 		return table
 	}
-	
+
 	result := Result{
 		Database: databaseName,
 		Tables:   []Table{},
 	}
-	
+
 	// Convert all children, handling orphans specially
 	for _, child := range root.Children {
 		if child.TableName == "orphan_tables" {
@@ -372,45 +390,45 @@ func renderTreeAsJSON(root *TreeNode, databaseName string) (string, error) {
 			}
 		}
 	}
-	
+
 	data, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	
+
 	return string(data), nil
 }
 
 func renderFlatAsText(g *graph.SchemaGraph) (string, error) {
 	var sb strings.Builder
-	
+
 	sb.WriteString("Database: ")
 	sb.WriteString(g.DatabaseName)
 	sb.WriteString("\n")
 	sb.WriteString(fmt.Sprintf("Tables: %d\n\n", len(g.Nodes)))
-	
+
 	// Sort table names
 	tableNames := getSortedTableNames(g)
-	
+
 	for _, tableName := range tableNames {
 		table := g.Nodes[tableName]
 		sb.WriteString(string(tableName))
 		sb.WriteString("\n")
-		
+
 		for _, col := range table.Columns {
 			sb.WriteString("  - ")
 			sb.WriteString(col.Name)
 			sb.WriteString(" (")
 			sb.WriteString(string(col.Type))
 			sb.WriteString(")")
-			
+
 			appendConstraints(&sb, table, col.Name)
 			sb.WriteString("\n")
 		}
-		
+
 		sb.WriteString("\n")
 	}
-	
+
 	return sb.String(), nil
 }
 
@@ -421,31 +439,31 @@ func renderFlatAsJSON(g *graph.SchemaGraph) (string, error) {
 		Constraint string `json:"constraint,omitempty"`
 		Reference  string `json:"reference,omitempty"`
 	}
-	
+
 	type Table struct {
 		Name    string   `json:"name"`
 		Columns []Column `json:"columns"`
 	}
-	
+
 	type Edge struct {
 		From             string   `json:"from"`
 		To               string   `json:"to"`
 		Columns          []string `json:"columns"`
 		ReferenceColumns []string `json:"referenceColumns"`
 	}
-	
+
 	type Result struct {
 		Database string  `json:"database"`
 		Tables   []Table `json:"tables"`
 		Edges    []Edge  `json:"edges"`
 	}
-	
+
 	result := Result{
 		Database: g.DatabaseName,
 		Tables:   []Table{},
 		Edges:    []Edge{},
 	}
-	
+
 	// Build tables
 	tableNames := getSortedTableNames(g)
 	for _, tableName := range tableNames {
@@ -454,13 +472,13 @@ func renderFlatAsJSON(g *graph.SchemaGraph) (string, error) {
 			Name:    string(tableName),
 			Columns: []Column{},
 		}
-		
+
 		for _, col := range t.Columns {
 			column := Column{
 				Name: col.Name,
 				Type: string(col.Type),
 			}
-			
+
 			// Find constraints
 			for _, constraint := range t.Constraints {
 				if len(constraint.Columns) == 1 && constraint.Columns[0] == col.Name {
@@ -471,7 +489,7 @@ func renderFlatAsJSON(g *graph.SchemaGraph) (string, error) {
 						column.Constraint = "UNIQUE"
 					}
 				}
-				
+
 				// Foreign keys
 				if constraint.Kind == database.ForeignKey {
 					for j, fkCol := range constraint.Columns {
@@ -483,13 +501,13 @@ func renderFlatAsJSON(g *graph.SchemaGraph) (string, error) {
 					}
 				}
 			}
-			
+
 			table.Columns = append(table.Columns, column)
 		}
-		
+
 		result.Tables = append(result.Tables, table)
 	}
-	
+
 	// Build edges
 	for _, edge := range g.Edges {
 		result.Edges = append(result.Edges, Edge{
@@ -499,55 +517,177 @@ func renderFlatAsJSON(g *graph.SchemaGraph) (string, error) {
 			ReferenceColumns: edge.ReferenceColumns,
 		})
 	}
-	
+
 	data, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	
+
 	return string(data), nil
 }
 
-// Helper functions
+func renderGraphAsText(g *graph.SchemaGraph) (string, error) {
+	d2Source := generateD2Diagram(g)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	ctx := log.With(context.Background(), logger)
+
+	ruler, err := textmeasure.NewRuler()
+	if err != nil {
+		return "", fmt.Errorf("failed to create text ruler: %w", err)
+	}
+
+	compileOpts := &d2lib.CompileOptions{
+		Ruler:  ruler,
+		Layout: go2.Pointer("elk"),
+		LayoutResolver: func(engine string) (d2graph.LayoutGraph, error) {
+			return d2elklayout.DefaultLayout, nil
+		},
+	}
+
+	themeId := int64(0)
+	renderOpts := &d2svg.RenderOpts{
+		Pad:     go2.Pointer(int64(0)),
+		ThemeID: &themeId,
+	}
+
+	diagram, _, err := d2lib.Compile(ctx, d2Source, compileOpts, renderOpts)
+	if err != nil {
+		return "", fmt.Errorf("failed to compile D2 diagram: %w", err)
+	}
+
+	artist := d2ascii.NewASCIIartist()
+	asciiBytes, err := artist.Render(ctx, diagram, &d2ascii.RenderOpts{
+		Scale:   go2.Pointer(1.0),
+		Charset: charset.ASCII,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to render ASCII: %w", err)
+	}
+
+	return string(asciiBytes), nil
+}
+
+// d2Ident properly quotes D2 identifiers to handle special characters,
+// spaces, dashes, dots, and reserved words
+func d2Ident(s string) string {
+	return strconv.Quote(s)
+}
+
+func generateD2Diagram(g *graph.SchemaGraph) string {
+	var sb strings.Builder
+
+	sb.WriteString("direction: right\n\n")
+
+	tableNames := getSortedTableNames(g)
+
+	for _, tableName := range tableNames {
+		table := g.Nodes[tableName]
+		if table == nil {
+			continue
+		}
+
+		sb.WriteString(d2Ident(string(tableName)))
+		sb.WriteString(": {\n")
+		sb.WriteString("  shape: sql_table\n")
+
+		for _, col := range table.Columns {
+			sb.WriteString("  ")
+			sb.WriteString(d2Ident(col.Name))
+			sb.WriteString(": ")
+			sb.WriteString(string(col.Type))
+
+			// Add constraints as metadata
+			var constraints []string
+			for _, constraint := range table.Constraints {
+				isInConstraint := false
+				for _, constraintCol := range constraint.Columns {
+					if constraintCol == col.Name {
+						isInConstraint = true
+						break
+					}
+				}
+
+				if isInConstraint {
+					switch constraint.Kind {
+					case database.PrimaryKey:
+						constraints = append(constraints, "PK")
+					case database.Unique:
+						constraints = append(constraints, "UNIQUE")
+					case database.ForeignKey:
+						constraints = append(constraints, "FK")
+					}
+				}
+			}
+
+			if len(constraints) > 0 {
+				sb.WriteString(" {constraint: ")
+				sb.WriteString(strconv.Quote(strings.Join(constraints, ", ")))
+				sb.WriteString("}")
+			}
+
+			sb.WriteString("\n")
+		}
+
+		sb.WriteString("}\n\n")
+	}
+
+	for _, edge := range g.Edges {
+		for i, col := range edge.Columns {
+			if i < len(edge.ReferenceColumns) {
+				sb.WriteString(d2Ident(string(edge.FromTable)))
+				sb.WriteString(".")
+				sb.WriteString(d2Ident(col))
+				sb.WriteString(" -> ")
+				sb.WriteString(d2Ident(string(edge.ToTable)))
+				sb.WriteString(".")
+				sb.WriteString(d2Ident(edge.ReferenceColumns[i]))
+				sb.WriteString("\n")
+			}
+		}
+	}
+
+	return sb.String()
+}
 
 func buildAdjacencyList(g *graph.SchemaGraph) map[graph.TableName][]graph.TableName {
 	childrenMap := make(map[graph.TableName][]graph.TableName)
-	
+
 	for tableName := range g.Nodes {
 		childrenMap[tableName] = []graph.TableName{}
 	}
-	
+
 	for _, edge := range g.Edges {
 		childrenMap[edge.ToTable] = append(childrenMap[edge.ToTable], edge.FromTable)
 	}
-	
+
 	return childrenMap
 }
 
 func findRootTables(g *graph.SchemaGraph) []graph.TableName {
 	hasIncomingEdge := make(map[graph.TableName]bool)
-	
+
 	for _, edge := range g.Edges {
 		hasIncomingEdge[edge.FromTable] = true
 	}
-	
+
 	var roots []graph.TableName
 	for tableName := range g.Nodes {
 		if !hasIncomingEdge[tableName] {
 			roots = append(roots, tableName)
 		}
 	}
-	
+
 	sort.Slice(roots, func(i, j int) bool {
 		return roots[i] < roots[j]
 	})
-	
+
 	return roots
 }
 
 func findOrphanTables(g *graph.SchemaGraph, visited map[graph.TableName]bool) []graph.TableName {
 	var orphans []graph.TableName
-	
+
 	for tableName := range g.Nodes {
 		if !visited[tableName] {
 			hasRelationship := false
@@ -562,11 +702,11 @@ func findOrphanTables(g *graph.SchemaGraph, visited map[graph.TableName]bool) []
 			}
 		}
 	}
-	
+
 	sort.Slice(orphans, func(i, j int) bool {
 		return orphans[i] < orphans[j]
 	})
-	
+
 	return orphans
 }
 
