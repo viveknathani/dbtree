@@ -125,11 +125,11 @@ func TestRender(t *testing.T) {
 				"users",
 				"posts",
 				"settings",
-				"PK id",
-				"FK user_id",
 				"┌",
 				"└",
 				"│",
+				"├",
+				"user_id",
 			},
 		},
 		{
