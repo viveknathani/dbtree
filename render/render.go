@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/viveknathani/d2/d2graph"
@@ -567,6 +568,12 @@ func renderGraphAsText(g *graph.SchemaGraph) (string, error) {
 	return string(asciiBytes), nil
 }
 
+// d2Ident properly quotes D2 identifiers to handle special characters,
+// spaces, dashes, dots, and reserved words
+func d2Ident(s string) string {
+	return strconv.Quote(s)
+}
+
 func generateD2Diagram(g *graph.SchemaGraph) string {
 	var sb strings.Builder
 
@@ -580,13 +587,13 @@ func generateD2Diagram(g *graph.SchemaGraph) string {
 			continue
 		}
 
-		sb.WriteString(string(tableName))
+		sb.WriteString(d2Ident(string(tableName)))
 		sb.WriteString(": {\n")
 		sb.WriteString("  shape: sql_table\n")
 
 		for _, col := range table.Columns {
 			sb.WriteString("  ")
-			sb.WriteString(col.Name)
+			sb.WriteString(d2Ident(col.Name))
 			sb.WriteString(": ")
 			sb.WriteString(string(col.Type))
 
@@ -628,13 +635,13 @@ func generateD2Diagram(g *graph.SchemaGraph) string {
 	for _, edge := range g.Edges {
 		for i, col := range edge.Columns {
 			if i < len(edge.ReferenceColumns) {
-				sb.WriteString(string(edge.FromTable))
+				sb.WriteString(d2Ident(string(edge.FromTable)))
 				sb.WriteString(".")
-				sb.WriteString(col)
+				sb.WriteString(d2Ident(col))
 				sb.WriteString(" -> ")
-				sb.WriteString(string(edge.ToTable))
+				sb.WriteString(d2Ident(string(edge.ToTable)))
 				sb.WriteString(".")
-				sb.WriteString(edge.ReferenceColumns[i])
+				sb.WriteString(d2Ident(edge.ReferenceColumns[i]))
 				sb.WriteString("\n")
 			}
 		}
