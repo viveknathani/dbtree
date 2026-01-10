@@ -6,7 +6,6 @@ require (
 	github.com/fergusstrange/embedded-postgres v1.33.0
 	github.com/lib/pq v1.10.9
 	github.com/viveknathani/d2 v0.0.0-20260110095913-68912a37f273
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 )
 
 require (
@@ -30,4 +29,7 @@ require (
 	oss.terrastruct.com/util-go v0.0.0-20250213174338-243d8661088a
 )
 
-require github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
+require (
+	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
+	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
+)
