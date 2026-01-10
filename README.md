@@ -267,7 +267,7 @@ Output:
 }
 ```
 
-## Hacking
+## hacking
 
 I am open to PRs for improving this project.
 
