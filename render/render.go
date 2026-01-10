@@ -263,7 +263,7 @@ func renderTableColumns(sb *strings.Builder, table *database.Table, prefix strin
 
 		sb.WriteString(col.Name)
 		sb.WriteString(" (")
-		sb.WriteString(string(col.Type))
+		sb.WriteString(strconv.Quote(string(col.Type)))
 		sb.WriteString(")")
 
 		// Add constraints
@@ -622,7 +622,7 @@ func generateD2Diagram(g *graph.SchemaGraph) string {
 
 			if len(constraints) > 0 {
 				sb.WriteString(" {constraint: ")
-				sb.WriteString(strings.Join(constraints, ", "))
+				sb.WriteString(strconv.Quote(strings.Join(constraints, ", ")))
 				sb.WriteString("}")
 			}
 
