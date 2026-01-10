@@ -24,7 +24,7 @@ type Configuration struct {
 // parseFlags parses command-line flags and returns a Configuration struct.
 func parseFlags() Configuration {
 	flag.Usage = func() {
-		fmt.Println("dbtree - A tool to visualize database schemas")
+		fmt.Fprintf(os.Stderr, "dbtree - A tool to visualize database schemas\n")
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.VisitAll(func(f *flag.Flag) {
@@ -82,9 +82,14 @@ func main() {
 
 	db, err := sql.Open("postgres", config.DatabaseUrl)
 	if err != nil {
-		log.Fatalf("error: failed to connect to database: %v", err)
+		log.Fatalf("error: failed to open database: %v", err)
 	}
 	defer db.Close()
+
+	// Verify the connection is actually established
+	if err := db.PingContext(context.Background()); err != nil {
+		log.Fatalf("error: failed to connect to database: %v", err)
+	}
 
 	schema, err := database.InspectSchema(context.Background(), db)
 
