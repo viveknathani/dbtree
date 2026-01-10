@@ -68,12 +68,12 @@ func main() {
 		log.Fatal("error: invalid format specified (use text or json)")
 	}
 
-	if config.Shape != string(render.ShapeTree) && config.Shape != string(render.ShapeFlat) && config.Shape != string(render.ShapeGraph) {
-		log.Fatal("error: invalid shape specified (use tree, flat, or graph)")
+	if config.Shape != string(render.ShapeTree) && config.Shape != string(render.ShapeFlat) && config.Shape != string(render.ShapeChart) {
+		log.Fatal("error: invalid shape specified (use tree, flat, or chart)")
 	}
 
-	if config.Shape == string(render.ShapeGraph) && config.Format == string(render.FormatJSON) {
-		log.Fatal("error: graph shape is only supported with text format")
+	if config.Shape == string(render.ShapeChart) && config.Format == string(render.FormatJSON) {
+		log.Fatal("error: chart shape is only supported with text format")
 	}
 
 	if !strings.HasPrefix(config.DatabaseUrl, "postgres://") && !strings.HasPrefix(config.DatabaseUrl, "postgresql://") {

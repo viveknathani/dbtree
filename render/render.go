@@ -33,7 +33,7 @@ const (
 	FormatJSON Format = "json"
 	ShapeTree  Shape  = "tree"
 	ShapeFlat  Shape  = "flat"
-	ShapeGraph Shape  = "graph"
+	ShapeChart Shape  = "chart"
 )
 
 // Render generates a string representation of the schema graph
@@ -54,10 +54,10 @@ func Render(g *graph.SchemaGraph, format Format, shape Shape) (string, error) {
 		return renderFlatAsText(g)
 	case format == FormatJSON && shape == ShapeFlat:
 		return renderFlatAsJSON(g)
-	case format == FormatText && shape == ShapeGraph:
+	case format == FormatText && shape == ShapeChart:
 		return renderGraphAsText(g)
-	case format == FormatJSON && shape == ShapeGraph:
-		return "", fmt.Errorf("graph shape is only supported with text format")
+	case format == FormatJSON && shape == ShapeChart:
+		return "", fmt.Errorf("chart shape is only supported with text format")
 	default:
 		return "", fmt.Errorf("unsupported format/shape combination: %s/%s", format, shape)
 	}
@@ -526,14 +526,11 @@ func renderFlatAsJSON(g *graph.SchemaGraph) (string, error) {
 }
 
 func renderGraphAsText(g *graph.SchemaGraph) (string, error) {
-	// Generate D2 source
 	d2Source := generateD2Diagram(g)
 
-	// Create context with silent logger to suppress D2 warnings
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx := log.With(context.Background(), logger)
 
-	// Compile with ELK layout
 	ruler, err := textmeasure.NewRuler()
 	if err != nil {
 		return "", fmt.Errorf("failed to create text ruler: %w", err)
@@ -558,7 +555,6 @@ func renderGraphAsText(g *graph.SchemaGraph) (string, error) {
 		return "", fmt.Errorf("failed to compile D2 diagram: %w", err)
 	}
 
-	// Render to ASCII with scale and unicode charset
 	artist := d2ascii.NewASCIIartist()
 	asciiBytes, err := artist.Render(ctx, diagram, &d2ascii.RenderOpts{
 		Scale:   go2.Pointer(1.0),
@@ -574,25 +570,20 @@ func renderGraphAsText(g *graph.SchemaGraph) (string, error) {
 func generateD2Diagram(g *graph.SchemaGraph) string {
 	var sb strings.Builder
 
-	// Set vertical layout direction
-	sb.WriteString("direction: left\n\n")
+	sb.WriteString("direction: right\n\n")
 
-	// Sort tables for deterministic output
 	tableNames := getSortedTableNames(g)
 
-	// Define all tables as SQL table shapes
 	for _, tableName := range tableNames {
 		table := g.Nodes[tableName]
 		if table == nil {
 			continue
 		}
 
-		// Table definition
 		sb.WriteString(string(tableName))
 		sb.WriteString(": {\n")
 		sb.WriteString("  shape: sql_table\n")
 
-		// Columns
 		for _, col := range table.Columns {
 			sb.WriteString("  ")
 			sb.WriteString(col.Name)
@@ -634,9 +625,7 @@ func generateD2Diagram(g *graph.SchemaGraph) string {
 		sb.WriteString("}\n\n")
 	}
 
-	// Define all relationships
 	for _, edge := range g.Edges {
-		// For each column in the FK, create a relationship
 		for i, col := range edge.Columns {
 			if i < len(edge.ReferenceColumns) {
 				sb.WriteString(string(edge.FromTable))
@@ -653,109 +642,6 @@ func generateD2Diagram(g *graph.SchemaGraph) string {
 
 	return sb.String()
 }
-
-// Old tree rendering helper (still used by tree shape)
-func renderTableBox(sb *strings.Builder, table *database.Table, tableName graph.TableName, isCircular bool) {
-	// Calculate box width based on table name and columns
-	maxWidth := len(table.Name)
-	for _, col := range table.Columns {
-		colStr := formatColumnForBox(table, col)
-		if len(colStr) > maxWidth {
-			maxWidth = len(colStr)
-		}
-	}
-
-	// Add padding
-	boxWidth := maxWidth + 2
-	if boxWidth < 30 {
-		boxWidth = 30
-	}
-
-	// Top border
-	sb.WriteString("┌")
-	sb.WriteString(strings.Repeat("─", boxWidth))
-	sb.WriteString("┐\n")
-
-	// Table name (centered)
-	padding := (boxWidth - len(table.Name)) / 2
-	sb.WriteString("│")
-	sb.WriteString(strings.Repeat(" ", padding))
-	sb.WriteString(table.Name)
-	sb.WriteString(strings.Repeat(" ", boxWidth-padding-len(table.Name)))
-	sb.WriteString("│")
-	if isCircular {
-		sb.WriteString(" (circular)")
-	}
-	sb.WriteString("\n")
-
-	// Separator
-	sb.WriteString("├")
-	sb.WriteString(strings.Repeat("─", boxWidth))
-	sb.WriteString("┤\n")
-
-	// Columns
-	for _, col := range table.Columns {
-		colStr := formatColumnForBox(table, col)
-		sb.WriteString("│ ")
-		sb.WriteString(colStr)
-		sb.WriteString(strings.Repeat(" ", boxWidth-len(colStr)-1))
-		sb.WriteString("│\n")
-	}
-
-	// Bottom border
-	sb.WriteString("└")
-	sb.WriteString(strings.Repeat("─", boxWidth))
-	sb.WriteString("┘\n")
-}
-
-func formatColumnForBox(table *database.Table, col database.Column) string {
-	var parts []string
-
-	// Check for constraints
-	isPK := false
-	isFK := false
-	isUnique := false
-
-	for _, constraint := range table.Constraints {
-		// Check if column is part of this constraint
-		isInConstraint := false
-		for _, constraintCol := range constraint.Columns {
-			if constraintCol == col.Name {
-				isInConstraint = true
-				break
-			}
-		}
-
-		if isInConstraint {
-			switch constraint.Kind {
-			case database.PrimaryKey:
-				isPK = true
-			case database.Unique:
-				isUnique = true
-			case database.ForeignKey:
-				isFK = true
-			}
-		}
-	}
-
-	// Build column string
-	if isPK {
-		parts = append(parts, "PK")
-	}
-	if isFK {
-		parts = append(parts, "FK")
-	}
-
-	parts = append(parts, col.Name)
-
-	if isUnique && !isPK {
-		parts = append(parts, "(unique)")
-	}
-
-	return strings.Join(parts, " ")
-}
-
-// Helper functions
 
 func buildAdjacencyList(g *graph.SchemaGraph) map[graph.TableName][]graph.TableName {
 	childrenMap := make(map[graph.TableName][]graph.TableName)

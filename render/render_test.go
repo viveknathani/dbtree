@@ -119,7 +119,7 @@ func TestRender(t *testing.T) {
 		{
 			name:    "text graph",
 			format:  FormatText,
-			shape:   ShapeGraph,
+			shape:   ShapeChart,
 			wantErr: false,
 			contains: []string{
 				"users",
@@ -133,9 +133,9 @@ func TestRender(t *testing.T) {
 			},
 		},
 		{
-			name:    "json graph not supported",
+			name:    "json chart not supported",
 			format:  FormatJSON,
-			shape:   ShapeGraph,
+			shape:   ShapeChart,
 			wantErr: true,
 		},
 	}
