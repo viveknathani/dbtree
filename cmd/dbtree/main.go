@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	_ "github.com/ClickHouse/clickhouse-go/v2"
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"github.com/viveknathani/dbtree/database"
 	"github.com/viveknathani/dbtree/graph"
@@ -76,11 +78,21 @@ func main() {
 		log.Fatal("error: chart shape is only supported with text format")
 	}
 
-	if !strings.HasPrefix(config.DatabaseUrl, "postgres://") && !strings.HasPrefix(config.DatabaseUrl, "postgresql://") {
-		log.Fatal("error: only PostgreSQL is supported currently")
+	// Determine the database driver from the connection URL
+	var driver string
+	if strings.HasPrefix(config.DatabaseUrl, "postgres://") || strings.HasPrefix(config.DatabaseUrl, "postgresql://") {
+		driver = "postgres"
+	} else if strings.HasPrefix(config.DatabaseUrl, "mysql://") {
+		driver = "mysql"
+		// Remove the mysql:// prefix for the MySQL driver
+		config.DatabaseUrl = strings.TrimPrefix(config.DatabaseUrl, "mysql://")
+	} else if strings.HasPrefix(config.DatabaseUrl, "clickhouse://") {
+		driver = "clickhouse"
+	} else {
+		log.Fatal("error: unsupported database URL format (supported: postgres://, mysql://, clickhouse://)")
 	}
 
-	db, err := sql.Open("postgres", config.DatabaseUrl)
+	db, err := sql.Open(driver, config.DatabaseUrl)
 	if err != nil {
 		log.Fatalf("error: failed to open database: %v", err)
 	}

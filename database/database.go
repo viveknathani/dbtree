@@ -60,23 +60,35 @@ type SchemaInspector interface {
 // detectDatabaseType determines the database type by querying the version string.
 // It supports PostgreSQL, MySQL, and ClickHouse detection.
 func detectDatabaseType(ctx context.Context, db *sql.DB) (string, error) {
+	// Try PostgreSQL version query first
 	var version string
 	err := db.QueryRowContext(ctx, "SELECT version()").Scan(&version)
-	if err != nil {
-		return "", fmt.Errorf("failed to detect database type: %w", err)
+	if err == nil {
+		lowerVersion := strings.ToLower(version)
+		if strings.Contains(lowerVersion, "postgresql") || strings.Contains(lowerVersion, "postgres") {
+			return "postgres", nil
+		}
+		if strings.Contains(lowerVersion, "clickhouse") {
+			return "clickhouse", nil
+		}
 	}
 
-	lowerVersion := strings.ToLower(version)
-	switch {
-	case strings.Contains(lowerVersion, "postgresql"):
-		return "postgres", nil
-	case strings.Contains(lowerVersion, "mysql"):
-		return "mysql", nil
-	case strings.Contains(lowerVersion, "clickhouse"):
-		return "clickhouse", nil
-	default:
-		return "", fmt.Errorf("unsupported database type: %s", version)
+	// Try MySQL specific query
+	err = db.QueryRowContext(ctx, "SELECT @@version_comment").Scan(&version)
+	if err == nil {
+		lowerVersion := strings.ToLower(version)
+		if strings.Contains(lowerVersion, "mysql") {
+			return "mysql", nil
+		}
 	}
+
+	// Try ClickHouse specific query
+	err = db.QueryRowContext(ctx, "SELECT name FROM system.databases LIMIT 1").Scan(&version)
+	if err == nil {
+		return "clickhouse", nil
+	}
+
+	return "", fmt.Errorf("could not determine database type")
 }
 
 // InspectSchema analyzes a database connection and returns a complete schema representation.
@@ -91,6 +103,10 @@ func InspectSchema(ctx context.Context, db *sql.DB) (*Database, error) {
 	switch dbType {
 	case "postgres":
 		inspector = &postgresInspector{}
+	case "mysql":
+		inspector = &mysqlInspector{}
+	case "clickhouse":
+		inspector = &clickhouseInspector{}
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", dbType)
 	}

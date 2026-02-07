@@ -3,37 +3,34 @@ package database
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"testing"
 
-	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
 	_ "github.com/lib/pq"
 )
 
-// TestInspectSchema tests the complete schema inspection functionality using embedded PostgreSQL.
-func TestInspectSchema(t *testing.T) {
-	// Start embedded postgres on non-standard port
-	postgres := embeddedpostgres.NewDatabase(embeddedpostgres.DefaultConfig().Port(9876))
-	if err := postgres.Start(); err != nil {
-		t.Fatalf("Failed to start embedded postgres: %v", err)
-	}
-	defer postgres.Stop()
+const postgresConnStr = "postgres://postgres:postgres@127.0.0.1:35432/testdb?sslmode=disable"
 
-	// Connect to embedded postgres
-	connStr := fmt.Sprintf("host=localhost port=9876 user=postgres password=postgres dbname=postgres sslmode=disable")
-	db, err := sql.Open("postgres", connStr)
+// TestPostgreSQLInspectSchema tests the complete schema inspection functionality for PostgreSQL.
+func TestPostgreSQLInspectSchema(t *testing.T) {
+	// Connect to dockerized postgres
+	db, err := sql.Open("postgres", postgresConnStr)
 	if err != nil {
 		t.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
+	// Verify connection
+	if err := db.Ping(); err != nil {
+		t.Skipf("Skipping test: PostgreSQL not available: %v", err)
+	}
+
 	ctx := context.Background()
 
 	// Create test schema
-	if err := createTestSchema(ctx, db); err != nil {
+	if err := createPostgreSQLTestSchema(ctx, db); err != nil {
 		t.Fatalf("Failed to create test schema: %v", err)
 	}
-	defer cleanupTestSchema(ctx, db)
+	defer cleanupPostgreSQLTestSchema(ctx, db)
 
 	// Test InspectSchema
 	result, err := InspectSchema(ctx, db)
@@ -118,8 +115,35 @@ func TestInspectSchema(t *testing.T) {
 	}
 }
 
-// createTestSchema creates test tables with various column types and constraints for testing.
-func createTestSchema(ctx context.Context, db *sql.DB) error {
+// TestPostgreSQLDatabaseDetection tests the database type detection functionality for PostgreSQL.
+func TestPostgreSQLDatabaseDetection(t *testing.T) {
+	// Connect to dockerized postgres
+	db, err := sql.Open("postgres", postgresConnStr)
+	if err != nil {
+		t.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	// Verify connection
+	if err := db.Ping(); err != nil {
+		t.Skipf("Skipping test: PostgreSQL not available: %v", err)
+	}
+
+	ctx := context.Background()
+
+	// Test database type detection
+	dbType, err := detectDatabaseType(ctx, db)
+	if err != nil {
+		t.Fatalf("Failed to detect database type: %v", err)
+	}
+
+	if dbType != "postgres" {
+		t.Errorf("Expected database type 'postgres', got '%s'", dbType)
+	}
+}
+
+// createPostgreSQLTestSchema creates test tables with various column types and constraints for testing.
+func createPostgreSQLTestSchema(ctx context.Context, db *sql.DB) error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS test_users (
 			id SERIAL PRIMARY KEY,
@@ -146,8 +170,8 @@ func createTestSchema(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// cleanupTestSchema removes test tables after testing is complete.
-func cleanupTestSchema(ctx context.Context, db *sql.DB) {
+// cleanupPostgreSQLTestSchema removes test tables after testing is complete.
+func cleanupPostgreSQLTestSchema(ctx context.Context, db *sql.DB) {
 	queries := []string{
 		`DROP TABLE IF EXISTS test_posts CASCADE`,
 		`DROP TABLE IF EXISTS test_users CASCADE`,
@@ -155,35 +179,5 @@ func cleanupTestSchema(ctx context.Context, db *sql.DB) {
 
 	for _, query := range queries {
 		db.ExecContext(ctx, query)
-	}
-}
-
-// TestDatabaseDetection tests the database type detection functionality.
-func TestDatabaseDetection(t *testing.T) {
-	// Start embedded postgres on non-standard port
-	postgres := embeddedpostgres.NewDatabase(embeddedpostgres.DefaultConfig().Port(9877))
-	if err := postgres.Start(); err != nil {
-		t.Fatalf("Failed to start embedded postgres: %v", err)
-	}
-	defer postgres.Stop()
-
-	// Connect to embedded postgres
-	connStr := fmt.Sprintf("host=localhost port=9877 user=postgres password=postgres dbname=postgres sslmode=disable")
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		t.Fatalf("Failed to connect to database: %v", err)
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	// Test database type detection
-	dbType, err := detectDatabaseType(ctx, db)
-	if err != nil {
-		t.Fatalf("Failed to detect database type: %v", err)
-	}
-
-	if dbType != "postgres" {
-		t.Errorf("Expected database type 'postgres', got '%s'", dbType)
 	}
 }

@@ -10,7 +10,7 @@ A tool to visualize database schemas right inside your terminal. It's built for 
 
 <img src="demo.gif" width="700" alt="Demo">
 
-<i>Works only with PostgreSQL for now.</i>
+Supports PostgreSQL, MySQL, and ClickHouse.
 
 ## features
 
@@ -44,10 +44,19 @@ go install github.com/viveknathani/dbtree/cmd/dbtree@latest
 
 ## usage
 
-- `--conn` (required): PostgreSQL connection URL
+- `--conn` (required): Database connection URL
 
+  **PostgreSQL:**
   - Format: `postgres://username:password@host:port/database`
   - Example: `postgres://user:pass@localhost:5432/mydb`
+
+  **MySQL:**
+  - Format: `mysql://username:password@tcp(host:port)/database`
+  - Example: `mysql://root:password@tcp(localhost:3306)/mydb`
+
+  **ClickHouse:**
+  - Format: `clickhouse://username:password@host:port/database`
+  - Example: `clickhouse://default:@localhost:9000/mydb`
 
 - `--format` (optional): Output format
 
@@ -267,21 +276,45 @@ Output:
 }
 ```
 
+## using with different databases
+
+### MySQL
+
+```bash
+dbtree --conn "mysql://root:password@tcp(localhost:3306)/mydb" --shape tree
+```
+
+### ClickHouse
+
+```bash
+dbtree --conn "clickhouse://default:@localhost:9000/mydb" --shape tree
+```
+
+Note: ClickHouse does not enforce foreign keys, so only primary keys and table/column information will be shown.
+
 ## hacking
 
 I am open to PRs for improving this project.
 
-You will need a bunch of things:
+You will need:
 
 1. make
 2. Go (>=v1.25)
-3. PostgreSQL
+3. Docker and Docker Compose (for running tests)
 
 Some handy commands:
 
 ```bash
+# Build the project
 make build
+
+# Run tests (starts containers, runs tests, stops containers)
 make test
+
+# For local development (keeps containers running)
+make test-local
+# ... do your testing ...
+make test-down  # when done
 ```
 
 ## license

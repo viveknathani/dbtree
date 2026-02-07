@@ -3,7 +3,8 @@ module github.com/viveknathani/dbtree
 go 1.25
 
 require (
-	github.com/fergusstrange/embedded-postgres v1.33.0
+	github.com/ClickHouse/clickhouse-go/v2 v2.43.0
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/lib/pq v1.10.9
 	github.com/viveknathani/d2 v0.0.0-20260110095913-68912a37f273
 )
@@ -23,13 +24,28 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
 	golang.org/x/image v0.20.0 // indirect
-	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	oss.terrastruct.com/util-go v0.0.0-20250213174338-243d8661088a
 )
 
 require (
-	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/ClickHouse/ch-go v0.71.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/go-faster/city v1.0.1 // indirect
+	github.com/go-faster/errors v0.7.1 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/klauspost/compress v1.18.3 // indirect
+	github.com/paulmach/orb v0.12.0 // indirect
+	github.com/pierrec/lz4/v4 v4.1.25 // indirect
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/segmentio/asm v1.2.1 // indirect
+	github.com/shopspring/decimal v1.4.0 // indirect
+	go.opentelemetry.io/otel v1.39.0 // indirect
+	go.opentelemetry.io/otel/trace v1.39.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
 )
