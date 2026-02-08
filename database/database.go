@@ -58,11 +58,17 @@ type SchemaInspector interface {
 }
 
 // detectDatabaseType determines the database type by querying the version string.
-// It supports PostgreSQL, MySQL, and ClickHouse detection.
+// It supports PostgreSQL, MySQL, ClickHouse, and SQLite detection.
 func detectDatabaseType(ctx context.Context, db *sql.DB) (string, error) {
-	// Try PostgreSQL version query first
+	// Try SQLite first (it has a different sqlite_version() function)
 	var version string
-	err := db.QueryRowContext(ctx, "SELECT version()").Scan(&version)
+	err := db.QueryRowContext(ctx, "SELECT sqlite_version()").Scan(&version)
+	if err == nil {
+		return "sqlite", nil
+	}
+
+	// Try PostgreSQL version query
+	err = db.QueryRowContext(ctx, "SELECT version()").Scan(&version)
 	if err == nil {
 		lowerVersion := strings.ToLower(version)
 		if strings.Contains(lowerVersion, "postgresql") || strings.Contains(lowerVersion, "postgres") {
@@ -107,6 +113,8 @@ func InspectSchema(ctx context.Context, db *sql.DB) (*Database, error) {
 		inspector = &mysqlInspector{}
 	case "clickhouse":
 		inspector = &clickhouseInspector{}
+	case "sqlite":
+		inspector = &sqliteInspector{}
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", dbType)
 	}

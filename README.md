@@ -10,7 +10,7 @@ A tool to visualize database schemas right inside your terminal. It's built for 
 
 <img src="demo.gif" width="700" alt="Demo">
 
-Supports PostgreSQL, MySQL, and ClickHouse.
+Supports PostgreSQL, MySQL, ClickHouse, and SQLite.
 
 ## features
 
@@ -57,6 +57,10 @@ go install github.com/viveknathani/dbtree/cmd/dbtree@latest
   **ClickHouse:**
   - Format: `clickhouse://username:password@host:port/database`
   - Example: `clickhouse://default:@localhost:9000/mydb`
+
+  **SQLite:**
+  - Format: `sqlite://path/to/database.db` or just `path/to/database.db`
+  - Example: `sqlite://./mydb.db` or `./mydb.db`
 
 - `--format` (optional): Output format
 
@@ -291,6 +295,14 @@ dbtree --conn "clickhouse://default:@localhost:9000/mydb" --shape tree
 ```
 
 Note: ClickHouse does not enforce foreign keys, so only primary keys and table/column information will be shown.
+
+### SQLite
+
+```bash
+dbtree --conn "./mydb.db" --shape tree
+# or
+dbtree --conn "sqlite://./mydb.db" --shape tree
+```
 
 ## hacking
 

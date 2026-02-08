@@ -12,6 +12,7 @@ import (
 	_ "github.com/ClickHouse/clickhouse-go/v2"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/viveknathani/dbtree/database"
 	"github.com/viveknathani/dbtree/graph"
 	"github.com/viveknathani/dbtree/render"
@@ -88,8 +89,15 @@ func main() {
 		config.DatabaseUrl = strings.TrimPrefix(config.DatabaseUrl, "mysql://")
 	} else if strings.HasPrefix(config.DatabaseUrl, "clickhouse://") {
 		driver = "clickhouse"
+	} else if strings.HasPrefix(config.DatabaseUrl, "sqlite://") {
+		driver = "sqlite3"
+		// Remove the sqlite:// prefix for the SQLite driver
+		config.DatabaseUrl = strings.TrimPrefix(config.DatabaseUrl, "sqlite://")
+	} else if strings.HasSuffix(config.DatabaseUrl, ".db") || strings.HasSuffix(config.DatabaseUrl, ".sqlite") || strings.HasSuffix(config.DatabaseUrl, ".sqlite3") {
+		// Assume SQLite if the URL ends with a database file extension
+		driver = "sqlite3"
 	} else {
-		log.Fatal("error: unsupported database URL format (supported: postgres://, mysql://, clickhouse://)")
+		log.Fatal("error: unsupported database URL format (supported: postgres://, mysql://, clickhouse://, sqlite://, or .db/.sqlite/.sqlite3 file)")
 	}
 
 	db, err := sql.Open(driver, config.DatabaseUrl)
