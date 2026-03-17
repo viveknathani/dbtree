@@ -12,7 +12,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
+
+var httpClient = &http.Client{Timeout: 30 * time.Second}
 
 type githubRelease struct {
 	TagName string `json:"tag_name"`
@@ -84,7 +87,7 @@ func Update(currentVersion string) error {
 }
 
 func getLatestVersion() (string, error) {
-	resp, err := http.Get("https://api.github.com/repos/viveknathani/dbtree/releases/latest")
+	resp, err := httpClient.Get("https://api.github.com/repos/viveknathani/dbtree/releases/latest")
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +110,7 @@ func getLatestVersion() (string, error) {
 }
 
 func downloadFile(dest, url string) error {
-	resp, err := http.Get(url)
+	resp, err := httpClient.Get(url)
 	if err != nil {
 		return err
 	}
