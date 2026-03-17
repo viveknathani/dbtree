@@ -16,6 +16,13 @@ import (
 	"github.com/viveknathani/dbtree/database"
 	"github.com/viveknathani/dbtree/graph"
 	"github.com/viveknathani/dbtree/render"
+	"github.com/viveknathani/dbtree/updater"
+)
+
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
 
 type Configuration struct {
@@ -29,6 +36,9 @@ func parseFlags() Configuration {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "dbtree - A tool to visualize database schemas\n")
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Commands:\n")
+		fmt.Fprintf(os.Stderr, "  update    Update dbtree to the latest version\n")
+		fmt.Fprintf(os.Stderr, "  version   Print the current version\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.VisitAll(func(f *flag.Flag) {
 			fmt.Fprintf(os.Stderr, "  --%s\n", f.Name)
@@ -60,6 +70,19 @@ func parseFlags() Configuration {
 }
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "version":
+			fmt.Printf("dbtree %s (commit: %s, built: %s)\n", version, commit, date)
+			return
+		case "update":
+			if err := updater.Update(version); err != nil {
+				log.Fatalf("error: %v", err)
+			}
+			return
+		}
+	}
+
 	config := parseFlags()
 
 	if config.DatabaseUrl == "" {
