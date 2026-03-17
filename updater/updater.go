@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -79,7 +80,18 @@ func Update(currentVersion string) error {
 	}
 
 	if err := replaceBinary(execPath, binaryPath); err != nil {
-		return fmt.Errorf("failed to replace binary: %w", err)
+		if os.IsPermission(err) && runtime.GOOS != "windows" {
+			fmt.Println("Permission denied, retrying with sudo...")
+			cmd := exec.Command("sudo", "cp", binaryPath, execPath)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("failed to replace binary with sudo: %w", err)
+			}
+		} else {
+			return fmt.Errorf("failed to replace binary: %w", err)
+		}
 	}
 
 	fmt.Printf("Successfully updated to v%s!\n", latestClean)
