@@ -32,10 +32,12 @@ Linter: `staticcheck ./...`
 
 ### Modules
 
-- **`cmd/dbtree/main.go`** — Entry point. Parses flags (`--conn`, `--format`, `--shape`), detects DB type, orchestrates pipeline. Subcommands: `version`, `update`.
+- **`cmd/dbtree/main.go`** — Entry point. Parses flags (`--conn`, `--format`, `--shape`), detects DB type, orchestrates pipeline. Subcommands: `version`, `update`, `open`.
 - **`database/`** — Schema introspection. `InspectSchema()` auto-detects DB type and delegates to the appropriate inspector (`postgresql.go`, `mysql.go`, `clickhouse.go`, `sqlite.go`). Returns a `Database` struct containing tables, columns, and constraints.
 - **`graph/`** — Converts `Database` → `SchemaGraph` (nodes + edges based on foreign keys).
 - **`render/`** — Outputs graph as text or JSON in tree, flat, or chart shape. Handles circular references via DFS cycle detection. Chart mode uses D2 diagram syntax.
+- **`tui/`** — Interactive terminal UI for managing connections and browsing schemas. Built with Bubble Tea.
+- **`store/`** — Encrypted persistence for saved database connections. Uses AES-256-GCM with argon2id key derivation.
 - **`updater/`** — Self-update mechanism that downloads latest GitHub release.
 
 ### Core types (database/database.go)

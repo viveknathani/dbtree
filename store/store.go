@@ -85,8 +85,8 @@ func NewStore(password string) (*Store, error) {
 	key := deriveKey(password, ef.Salt)
 	s := &Store{filePath: filePath, key: key}
 
-	// Verify password by attempting decryption
-	if _, err := s.Load(); err != nil {
+	// Verify password by decrypting the already-read data
+	if _, err := s.decryptConnections(ef); err != nil {
 		return nil, ErrWrongPassword
 	}
 
@@ -105,6 +105,11 @@ func (s *Store) Load() ([]Connection, error) {
 		return nil, fmt.Errorf("failed to parse store file: %w", err)
 	}
 
+	return s.decryptConnections(ef)
+}
+
+// decryptConnections decrypts an encryptedFile and returns the connections.
+func (s *Store) decryptConnections(ef encryptedFile) ([]Connection, error) {
 	plaintext, err := decrypt(s.key, ef.Nonce, ef.Ciphertext)
 	if err != nil {
 		return nil, ErrWrongPassword
@@ -134,11 +139,18 @@ func (s *Store) Save(connections []Connection) error {
 	return s.saveWithSalt(connections, ef.Salt)
 }
 
-// Add appends a new connection and saves.
+// Add appends a new connection and saves. Returns an error if a connection
+// with the same name already exists.
 func (s *Store) Add(conn Connection) error {
 	connections, err := s.Load()
 	if err != nil {
 		return err
+	}
+
+	for _, existing := range connections {
+		if existing.Name == conn.Name {
+			return fmt.Errorf("connection name %q already exists", conn.Name)
+		}
 	}
 
 	conn.LastUsed = time.Now().Unix()
@@ -205,8 +217,17 @@ func (s *Store) saveWithSalt(connections []Connection, salt []byte) error {
 	return os.WriteFile(s.filePath, data, 0600)
 }
 
+// Argon2id parameters. OWASP recommends time=2, memory=19456 as a baseline.
+// Higher values are more secure but slower to unlock.
+const (
+	argon2Time    = 2
+	argon2Memory  = 19 * 1024 // 19 MiB
+	argon2Threads = 4
+	argon2KeyLen  = 32
+)
+
 func deriveKey(password string, salt []byte) []byte {
-	return argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
+	return argon2.IDKey([]byte(password), salt, argon2Time, argon2Memory, argon2Threads, argon2KeyLen)
 }
 
 func encrypt(key, plaintext []byte) (nonce, ciphertext []byte, err error) {

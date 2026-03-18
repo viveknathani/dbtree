@@ -19,6 +19,7 @@ func (m model) updatePassword(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			m.passwordErr = ""
+			m.unlocking = true
 			return m, loadConnections(password)
 		}
 	}
@@ -31,6 +32,12 @@ func (m model) updatePassword(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) viewPassword() string {
 	s := titleStyle.Render("dbtree") + "\n"
 	s += subtitleStyle.Render("Database Schema Visualizer") + "\n\n"
+
+	if m.unlocking {
+		s += subtitleStyle.Render("Unlocking...") + "\n"
+		return s
+	}
+
 	s += inputLabelStyle.Render("Master Password:") + "\n"
 	s += "  " + m.passwordInput.View() + "\n\n"
 

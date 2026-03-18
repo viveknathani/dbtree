@@ -24,6 +24,7 @@ type model struct {
 	// password view
 	passwordInput textinput.Model
 	passwordErr   string
+	unlocking     bool
 
 	// menu view
 	connections []store.Connection
@@ -102,6 +103,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case connectionsLoadedMsg:
+		m.unlocking = false
 		if msg.err != nil {
 			m.passwordErr = msg.err.Error()
 			return m, nil

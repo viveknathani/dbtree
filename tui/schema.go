@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	_ "github.com/ClickHouse/clickhouse-go/v2"
 	_ "github.com/go-sql-driver/mysql"
@@ -60,21 +61,28 @@ func (m model) updateSchema(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m model) connName() string {
+	if m.currentConn != nil {
+		return m.currentConn.Name
+	}
+	return "dbtree"
+}
+
 func (m model) viewSchema() string {
 	if m.loading {
-		s := titleStyle.Render(m.currentConn.Name) + "\n"
+		s := titleStyle.Render(m.connName()) + "\n"
 		s += subtitleStyle.Render("Loading schema...") + "\n"
 		return s
 	}
 
 	if m.schemaErr != "" {
-		s := titleStyle.Render(m.currentConn.Name) + "\n"
+		s := titleStyle.Render(m.connName()) + "\n"
 		s += errorStyle.Render("Error: "+m.schemaErr) + "\n\n"
 		s += helpStyle.Render("r: Retry  b: Back  q: Quit")
 		return s
 	}
 
-	header := titleStyle.Render(m.currentConn.Name)
+	header := titleStyle.Render(m.connName())
 	content := m.viewport.View()
 	statusBar := statusBarStyle.Render(
 		fmt.Sprintf(" Format: %s  Shape: %s  %d%%",
@@ -103,7 +111,9 @@ func loadSchema(conn *store.Connection, format render.Format, shape render.Shape
 		}
 		defer db.Close()
 
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
 		if err := db.PingContext(ctx); err != nil {
 			return schemaLoadedMsg{err: fmt.Errorf("failed to connect: %w", err)}
 		}

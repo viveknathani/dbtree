@@ -15,8 +15,18 @@ func (m model) updateNewConn(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEsc:
 			m.state = stateMenu
 			return m, nil
-		case tea.KeyTab, tea.KeyShiftTab:
-			m.newConnFocus = (m.newConnFocus + 1) % 2
+		case tea.KeyTab:
+			m.newConnFocus = (m.newConnFocus + 1) % len(m.newConnInputs)
+			for i := range m.newConnInputs {
+				if i == m.newConnFocus {
+					m.newConnInputs[i].Focus()
+				} else {
+					m.newConnInputs[i].Blur()
+				}
+			}
+			return m, nil
+		case tea.KeyShiftTab:
+			m.newConnFocus = (m.newConnFocus - 1 + len(m.newConnInputs)) % len(m.newConnInputs)
 			for i := range m.newConnInputs {
 				if i == m.newConnFocus {
 					m.newConnInputs[i].Focus()
