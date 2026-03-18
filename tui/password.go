@@ -13,6 +13,9 @@ func (m model) updatePassword(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
+			if m.unlocking {
+				return m, nil
+			}
 			password := m.passwordInput.Value()
 			if password == "" {
 				m.passwordErr = "password cannot be empty"

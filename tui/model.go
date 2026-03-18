@@ -37,12 +37,14 @@ type model struct {
 	newConnErr    string
 
 	// schema view
-	viewport    viewport.Model
-	currentConn *store.Connection
-	format      render.Format
-	shape       render.Shape
-	schemaErr   string
-	loading     bool
+	viewport      viewport.Model
+	currentConn   *store.Connection
+	format        render.Format
+	shape         render.Shape
+	schemaErr     string
+	loading       bool
+	schemaReqID   uint64
+	commandBuf    string
 
 	// shared
 	connStore *store.Store
@@ -62,6 +64,7 @@ type (
 	schemaLoadedMsg struct {
 		output string
 		err    error
+		reqID  uint64
 	}
 )
 
@@ -114,6 +117,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case schemaLoadedMsg:
+		if msg.reqID != m.schemaReqID {
+			return m, nil // stale response, discard
+		}
 		m.loading = false
 		if msg.err != nil {
 			m.schemaErr = msg.err.Error()

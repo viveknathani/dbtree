@@ -33,7 +33,8 @@ func (m model) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentConn = &conn
 			m.loading = true
 			m.state = stateSchema
-			return m, loadSchema(&conn, m.format, m.shape)
+			m.schemaReqID++
+			return m, loadSchema(&conn, m.format, m.shape, m.schemaReqID)
 		case "d":
 			if len(m.connections) > 0 && m.menuCursor < len(m.connections) {
 				name := m.connections[m.menuCursor].Name

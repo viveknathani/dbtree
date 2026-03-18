@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/argon2"
@@ -31,6 +32,7 @@ type encryptedFile struct {
 
 // Store manages encrypted connection persistence.
 type Store struct {
+	mu       sync.Mutex
 	filePath string
 	key      []byte
 }
@@ -142,6 +144,9 @@ func (s *Store) Save(connections []Connection) error {
 // Add appends a new connection and saves. Returns an error if a connection
 // with the same name already exists.
 func (s *Store) Add(conn Connection) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	connections, err := s.Load()
 	if err != nil {
 		return err
@@ -160,6 +165,9 @@ func (s *Store) Add(conn Connection) error {
 
 // Remove deletes a connection by name and saves.
 func (s *Store) Remove(name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	connections, err := s.Load()
 	if err != nil {
 		return err
@@ -177,6 +185,9 @@ func (s *Store) Remove(name string) error {
 
 // TouchLastUsed updates the LastUsed timestamp for the named connection.
 func (s *Store) TouchLastUsed(name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	connections, err := s.Load()
 	if err != nil {
 		return err
@@ -214,7 +225,36 @@ func (s *Store) saveWithSalt(connections []Connection, salt []byte) error {
 		return fmt.Errorf("failed to marshal encrypted file: %w", err)
 	}
 
-	return os.WriteFile(s.filePath, data, 0600)
+	// Atomic write: write to temp file, fsync, then rename into place.
+	tmpPath := s.filePath + ".tmp"
+	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return fmt.Errorf("failed to write temp file: %w", err)
+	}
+
+	if err := f.Sync(); err != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return fmt.Errorf("failed to sync temp file: %w", err)
+	}
+
+	if err := f.Close(); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, s.filePath); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("failed to rename temp file: %w", err)
+	}
+
+	return nil
 }
 
 // Argon2id parameters. OWASP recommends time=2, memory=19456 as a baseline.
