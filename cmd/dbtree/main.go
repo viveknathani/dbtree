@@ -16,6 +16,7 @@ import (
 	"github.com/viveknathani/dbtree/database"
 	"github.com/viveknathani/dbtree/graph"
 	"github.com/viveknathani/dbtree/render"
+	"github.com/viveknathani/dbtree/tui"
 	"github.com/viveknathani/dbtree/updater"
 )
 
@@ -37,6 +38,7 @@ func parseFlags() Configuration {
 		fmt.Fprintf(os.Stderr, "dbtree - A tool to visualize database schemas\n")
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Commands:\n")
+		fmt.Fprintf(os.Stderr, "  open      Launch interactive TUI mode\n")
 		fmt.Fprintf(os.Stderr, "  update    Update dbtree to the latest version\n")
 		fmt.Fprintf(os.Stderr, "  version   Print the current version\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
@@ -77,6 +79,11 @@ func main() {
 			return
 		case "update":
 			if err := updater.Update(version); err != nil {
+				log.Fatalf("error: %v", err)
+			}
+			return
+		case "open":
+			if err := tui.Run(); err != nil {
 				log.Fatalf("error: %v", err)
 			}
 			return
